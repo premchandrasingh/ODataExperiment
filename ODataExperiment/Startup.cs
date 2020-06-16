@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNet.OData.Builder;
 using Microsoft.AspNet.OData.Extensions;
+using Microsoft.AspNet.OData.Formatter;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.HttpsPolicy;
@@ -13,7 +14,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.OData.Edm;
+using Microsoft.OpenApi.Models;
 using ODataExperiment.Models;
+using Microsoft.Net.Http.Headers;
 
 namespace ODataExperiment
 {
@@ -31,6 +34,13 @@ namespace ODataExperiment
         {
             services.AddControllers().AddNewtonsoftJson();
             services.AddOData();
+
+            services.AddSwaggerGen(c =>
+            {
+                c.SwaggerDoc("v1", new OpenApiInfo { Title = "My Odata enabled API V1", Version = "v1" });
+            });
+
+            SetOutputFormatters(services);
 
         }
 
@@ -53,7 +63,14 @@ namespace ODataExperiment
                 endpoints.MapControllers();
                 endpoints.EnableDependencyInjection();
                 endpoints.Select().Filter().OrderBy().Count().MaxTop(10);
-                //endpoints.MapODataRoute("odata", "odata", GetEdmModel());
+                endpoints.MapODataRoute("odata", "odata", GetEdmModel());
+            });
+
+            app.UseSwagger();
+
+            app.UseSwaggerUI(c =>
+            {
+                c.SwaggerEndpoint("/swagger/v1/swagger.json", "My Odata enabled API V1");
             });
         }
 
@@ -63,6 +80,21 @@ namespace ODataExperiment
             odataBuilder.EntitySet<WeatherForecast>("WeatherForecast");
 
             return odataBuilder.GetEdmModel();
+        }
+
+        private static void SetOutputFormatters(IServiceCollection services)
+        {
+            services.AddMvcCore(options =>
+            {
+                IEnumerable<ODataOutputFormatter> outputFormatters =
+                    options.OutputFormatters.OfType<ODataOutputFormatter>()
+                        .Where(foramtter => foramtter.SupportedMediaTypes.Count == 0);
+
+                foreach (var outputFormatter in outputFormatters)
+                {
+                    outputFormatter.SupportedMediaTypes.Add(new MediaTypeHeaderValue("application/odata"));
+                }
+            });
         }
     }
 }

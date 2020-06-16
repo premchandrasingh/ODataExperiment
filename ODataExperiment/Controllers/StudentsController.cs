@@ -8,8 +8,7 @@ using System.Threading.Tasks;
 
 namespace ODataExperiment.Controllers
 {
-
-    public class StudentsController : ControllerBase
+    public class StudentsController : ApiBaseController
     {
         [HttpGet]
         [EnableQuery()]
